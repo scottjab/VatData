@@ -94,6 +94,8 @@ class VatData(object):
             usedRandomNumber = []
             while response.status_code is not 200:    # If one site fails, try another
                 randomServerNumber = random.randint(0, len(self.dataServers) - 1)
+                if len(usedRandomNumber) is len(self.dataServers): # Failed too many time, time to die
+                    sys.exit(1)
                 if randomServerNumber in usedRandomNumber:
                     continue
                 response = requests.get(self.dataServers[randomServerNumber])
