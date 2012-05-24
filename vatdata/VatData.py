@@ -90,8 +90,16 @@ class VatData(object):
         if  (datetime.now() - self.refreshtime) > timedelta(minutes = 2):
             #only update the if the data is older than 2 min.
             
-            randomServerNumber = random.randint(0, len(self.dataServers) - 1)
-            response = requests.get(self.dataServers[randomServerNumber])
+            response = requests.Response()
+            usedRandomNumber = []
+            while response.status_code is not 200:    # If one site fails, try another
+                randomServerNumber = random.randint(0, len(self.dataServers) - 1)
+                if len(usedRandomNumber) is len(self.dataServers): # Failed too many time, time to die
+                    sys.exit(1)
+                if randomServerNumber in usedRandomNumber:
+                    continue
+                response = requests.get(self.dataServers[randomServerNumber])
+                usedRandomNumber.append(randomServerNumber)
             unidecoded = unicode(response.content,errors='replace')
             dataFile = unidecoded.split('\r\n')
             dataFile = [line.replace(u'\xef',u'').replace(u'\ufffd',u'').replace(u'^',u' ') for line in dataFile]
