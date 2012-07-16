@@ -13,6 +13,7 @@ import requests
 import random
 import profilemapper
 from datetime import datetime, timedelta
+import re
 
 class VatData(object):
     """Retrieves and parses the vatsim data file."""
@@ -25,8 +26,8 @@ class VatData(object):
     dataList        = []
     dataDicts       = []
     refreshtime     = None
-    def __init__(self):
-        self.getDataServers()
+    def __init__(self,server=None):
+        self.getDataServers(server)
         self.refreshData()
         
     def parseStatsFile(self,stats):
@@ -49,18 +50,23 @@ class VatData(object):
                 self.userServers.append(line)
         return {'dataServers' : self.dataServers, 'vatsimServerListServers' : self.vatsimServerListServers, 'metarServers' : self.metarServers,'atisServers' : self.atisServers, 'userServers' : self.userServers}    
     
-    def getDataServers(self):
+    def getDataServers(self,server):
         """Returns a tuple of data server urls."""
-        response = requests.get('http://status.vatsim.net/status.txt')
-    
-        statsFile = response.content.split('\r\n')
+
+        if server == None:
+            server = 'http://status.vatsim.net/status.txt'    
+        response = requests.get(server)
+        
+        
+        statsFile = re.split(r'[\n\r]+',response.content)
         return tuple(self.parseStatsFile(statsFile)['dataServers'])
     
     def parseDataFile(self, data):
         """Parses the data file."""
         block = 0
         clientsbool = False
-        dataDicts = []
+        self.dataDicts = []
+        self.dataList = []
         for line in data:
             try:
                 if '!CLIENTS:' in line:
@@ -101,7 +107,7 @@ class VatData(object):
                 response = requests.get(self.dataServers[randomServerNumber])
                 usedRandomNumber.append(randomServerNumber)
             unidecoded = unicode(response.content,errors='replace')
-            dataFile = unidecoded.split('\r\n')
+            dataFile = re.split(r'[\n\r]+',unidecoded)
             dataFile = [line.replace(u'\xef',u'').replace(u'\ufffd',u'').replace(u'^',u' ') for line in dataFile]
             self.parseDataFile(dataFile)
             #cache the time
@@ -119,7 +125,7 @@ class VatData(object):
 def main():
     v = VatData()
     data = v.getData()
-    #print data
+    print data
     for user in data:
         if user['clienttype'] == 'ATC' and user['server'] == 'USA-E':
             splitAtis = user['atis_message'].split(" ",2)
